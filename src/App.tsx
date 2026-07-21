@@ -33,6 +33,7 @@ function App() {
   const [scripts, setScripts] = useState<MatterScript[]>([])
   const [viewingId, setViewingId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [codeDrafts, setCodeDrafts] = useState<Record<string, string>>({})
   const [prompt, setPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT)
@@ -59,6 +60,7 @@ function App() {
     }
     scriptsRef.current = []
     setScripts([])
+    setCodeDrafts({})
   }, [])
 
   useEffect(() => {
@@ -186,12 +188,31 @@ function App() {
     setScripts(scriptsRef.current)
     setViewingId((current) => (current === id ? null : current))
     setSelectedId((current) => (current === id ? null : current))
+    setCodeDrafts((prev) => {
+      if (!(id in prev)) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
   }
 
   const reloadScript = (id: string) => {
     const script = scriptsRef.current.find((s) => s.id === id)
     if (!script) return
-    replaceGeneratedCode(id, script.code, script.title, script.history)
+    const source = codeDrafts[id] ?? script.code
+    const history =
+      source === script.code
+        ? script.history
+        : [...script.history, { request: 'Manual edit', code: source }]
+    const ok = replaceGeneratedCode(id, source, script.title, history)
+    if (ok) {
+      setCodeDrafts((prev) => {
+        if (!(id in prev)) return prev
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+    }
   }
 
   const clearAll = () => {
@@ -202,7 +223,12 @@ function App() {
     setScripts([])
     setViewingId(null)
     setSelectedId(null)
+    setCodeDrafts({})
     setError(null)
+  }
+
+  const handleCodeChange = (id: string, code: string) => {
+    setCodeDrafts((prev) => ({ ...prev, [id]: code }))
   }
 
   const toggleSelection = (id: string) => {
@@ -245,7 +271,17 @@ function App() {
             { request, code: generated },
           ])
         : addGeneratedCode(generated, request)
-      if (ok) setPrompt('')
+      if (ok) {
+        setPrompt('')
+        if (selectedScript) {
+          setCodeDrafts((prev) => {
+            if (!(selectedScript.id in prev)) return prev
+            const next = { ...prev }
+            delete next[selectedScript.id]
+            return next
+          })
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -268,6 +304,8 @@ function App() {
         onToggleView={toggleView}
         onReloadScript={reloadScript}
         onRemoveScript={removeScript}
+        onCodeChange={handleCodeChange}
+        codeDrafts={codeDrafts}
         onPromptChange={setPrompt}
         onSubmit={() => void askForCode()}
         onResizeStart={() => setResizingLeft(true)}

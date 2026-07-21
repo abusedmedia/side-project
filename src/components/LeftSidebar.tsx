@@ -14,6 +14,8 @@ type LeftSidebarProps = {
   onToggleView: (id: string) => void
   onReloadScript: (id: string) => void
   onRemoveScript: (id: string) => void
+  onCodeChange: (id: string, code: string) => void
+  codeDrafts: Record<string, string>
   onPromptChange: (value: string) => void
   onSubmit: () => void
   onResizeStart: () => void
@@ -32,6 +34,8 @@ export function LeftSidebar({
   onToggleView,
   onReloadScript,
   onRemoveScript,
+  onCodeChange,
+  codeDrafts,
   onPromptChange,
   onSubmit,
   onResizeStart,
@@ -117,7 +121,14 @@ export function LeftSidebar({
                       </div>
                     </div>
                     {isOpen ? (
-                      <pre className="script-list__code">{script.code}</pre>
+                      <textarea
+                        className="script-list__code"
+                        value={codeDrafts[script.id] ?? script.code}
+                        spellCheck={false}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onChange={(e) => onCodeChange(script.id, e.target.value)}
+                      />
                     ) : null}
                   </li>
                 )
