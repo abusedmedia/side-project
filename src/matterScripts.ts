@@ -28,10 +28,16 @@ export type ScriptProps = MatterScope & {
 }
 
 /** Controllable object for one submitted snippet. */
+export type MatterScriptRevision = {
+  request: string
+  code: string
+}
+
 export type MatterScript = {
   id: string
   title: string
   code: string
+  history: MatterScriptRevision[]
   getBodies: () => Matter.Body[]
   remove: () => void
 }
@@ -159,6 +165,7 @@ export function createMatterScript(
   scope: MatterScope,
   tracking: ScriptTracking,
   title: string,
+  history?: MatterScriptRevision[],
 ): MatterScript {
   const id = `script-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
   const track = tracking.begin(id)
@@ -167,6 +174,7 @@ export function createMatterScript(
     id,
     title,
     code,
+    history: history ?? [{ request: title, code }],
     getBodies: () => bodiesFromObjects(track.objects),
     remove: () => {
       removeTrackedFromWorld(track, scope.world)

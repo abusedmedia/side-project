@@ -125,9 +125,51 @@ function App() {
         scope,
         trackingRef.current,
         title,
+        [{ request: title, code: source }],
       )
       scriptsRef.current = [...scriptsRef.current, script]
       setScripts(scriptsRef.current)
+      setError(null)
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      return false
+    }
+  }
+
+  const replaceGeneratedCode = (
+    id: string,
+    source: string,
+    title: string,
+    history: MatterScript['history'],
+  ): boolean => {
+    const scope = scopeRef.current
+    if (!scope) {
+      setError('Engine is not ready yet')
+      return false
+    }
+
+    const index = scriptsRef.current.findIndex((s) => s.id === id)
+    if (index === -1) {
+      setError('Selected object no longer exists')
+      return false
+    }
+
+    try {
+      const script = createMatterScript(
+        source,
+        scope,
+        trackingRef.current,
+        title,
+        history,
+      )
+      scriptsRef.current[index].remove()
+      const next = [...scriptsRef.current]
+      next[index] = script
+      scriptsRef.current = next
+      setScripts(next)
+      setSelectedId((current) => (current === id ? script.id : current))
+      setViewingId((current) => (current === id ? script.id : current))
       setError(null)
       return true
     } catch (err) {
@@ -144,6 +186,12 @@ function App() {
     setScripts(scriptsRef.current)
     setViewingId((current) => (current === id ? null : current))
     setSelectedId((current) => (current === id ? null : current))
+  }
+
+  const reloadScript = (id: string) => {
+    const script = scriptsRef.current.find((s) => s.id === id)
+    if (!script) return
+    replaceGeneratedCode(id, script.code, script.title, script.history)
   }
 
   const clearAll = () => {
@@ -169,14 +217,34 @@ function App() {
     const request = prompt.trim()
     if (!request || generating) return
 
+    const editingId = selectedId
+    const selectedScript = editingId
+      ? scriptsRef.current.find((s) => s.id === editingId)
+      : undefined
+
+    if (editingId && !selectedScript) {
+      setError('Selected object no longer exists')
+      setSelectedId(null)
+      return
+    }
+
     setGenerating(true)
     setError(null)
     try {
-      const generated = await generateMatterCode(request, {
-        enabled: wallsEnabled,
-        ...wallSides,
-      })
-      const ok = addGeneratedCode(generated, request)
+      const generated = await generateMatterCode(
+        request,
+        {
+          enabled: wallsEnabled,
+          ...wallSides,
+        },
+        selectedScript ? { history: selectedScript.history } : undefined,
+      )
+      const ok = selectedScript
+        ? replaceGeneratedCode(selectedScript.id, generated, request, [
+            ...selectedScript.history,
+            { request, code: generated },
+          ])
+        : addGeneratedCode(generated, request)
       if (ok) setPrompt('')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -198,6 +266,7 @@ function App() {
         onClearAll={clearAll}
         onToggleSelection={toggleSelection}
         onToggleView={toggleView}
+        onReloadScript={reloadScript}
         onRemoveScript={removeScript}
         onPromptChange={setPrompt}
         onSubmit={() => void askForCode()}

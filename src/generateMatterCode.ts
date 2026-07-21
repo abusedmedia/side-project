@@ -1,4 +1,4 @@
-import type { WallConfig } from './matterScripts'
+import type { MatterScriptRevision, WallConfig } from './matterScripts'
 
 const SYSTEM_PROMPT = `You write Matter.js snippets for a live physics sandbox called "matter-of-fact".
 
@@ -65,9 +65,46 @@ function formatWallConfig(walls: WallConfig): string {
     : `walls on: ${active.join(', ')}`
 }
 
+function formatEditHistory(history: MatterScriptRevision[]): string {
+  return history
+    .map(
+      (revision, index) =>
+        `### Edit ${index + 1}\nRequest: ${revision.request}\nCode:\n${revision.code}`,
+    )
+    .join('\n\n')
+}
+
+export type GenerateMatterCodeOptions = {
+  history?: MatterScriptRevision[]
+}
+
+function buildUserMessage(
+  prompt: string,
+  walls: WallConfig,
+  history?: MatterScriptRevision[],
+): string {
+  const wallLine = formatWallConfig(walls)
+  if (history && history.length > 0) {
+    return [
+      `Edit the existing Matter snippet below (${wallLine}).`,
+      'Use the edit history to understand prior intent for this object.',
+      'The last history entry is the current code. Apply the new user request and return the full updated setup body.',
+      'Replace the previous snippet entirely — output only the new raw JavaScript.',
+      '',
+      '## Edit history (oldest → newest)',
+      formatEditHistory(history),
+      '',
+      '## New user request',
+      prompt.trim(),
+    ].join('\n')
+  }
+  return `Add this to the Matter world (${wallLine}):\n${prompt.trim()}`
+}
+
 export async function generateMatterCode(
   prompt: string,
   walls: WallConfig,
+  options: GenerateMatterCodeOptions = {},
 ): Promise<string> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY
   if (!apiKey) {
@@ -89,7 +126,7 @@ export async function generateMatterCode(
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `Add this to the Matter world (${formatWallConfig(walls)}):\n${prompt.trim()}`,
+          content: buildUserMessage(prompt, walls, options.history),
         },
       ],
     }),

@@ -12,6 +12,7 @@ type LeftSidebarProps = {
   onClearAll: () => void
   onToggleSelection: (id: string) => void
   onToggleView: (id: string) => void
+  onReloadScript: (id: string) => void
   onRemoveScript: (id: string) => void
   onPromptChange: (value: string) => void
   onSubmit: () => void
@@ -29,11 +30,14 @@ export function LeftSidebar({
   onClearAll,
   onToggleSelection,
   onToggleView,
+  onReloadScript,
   onRemoveScript,
   onPromptChange,
   onSubmit,
   onResizeStart,
 }: LeftSidebarProps) {
+  const isEditing = selectedId !== null
+
   return (
     <aside className="sidebar" style={{ width, flexBasis: width }}>
       <div className="sidebar__main">
@@ -92,6 +96,16 @@ export function LeftSidebar({
                         </button>
                         <button
                           type="button"
+                          className="script-list__action"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onReloadScript(script.id)
+                          }}
+                        >
+                          Reload
+                        </button>
+                        <button
+                          type="button"
                           className="script-list__action script-list__action--danger"
                           onClick={(e) => {
                             e.stopPropagation()
@@ -129,7 +143,9 @@ export function LeftSidebar({
           value={prompt}
           onChange={(e) => onPromptChange(e.target.value)}
           onFocus={(e) => e.currentTarget.select()}
-          placeholder="Ask to add something…"
+          placeholder={
+            isEditing ? 'Describe the change…' : 'Ask to add something…'
+          }
           disabled={generating}
           autoComplete="off"
         />
@@ -142,8 +158,10 @@ export function LeftSidebar({
           {generating ? (
             <>
               <span className="prompt-bar__spinner" aria-hidden="true" />
-              Generating…
+              {isEditing ? 'Editing…' : 'Generating…'}
             </>
+          ) : isEditing ? (
+            'Edit'
           ) : (
             'Generate'
           )}
