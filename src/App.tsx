@@ -31,13 +31,13 @@ function App() {
   const scriptsRef = useRef<MatterScript[]>([])
   const [error, setError] = useState<string | null>(null)
   const [scripts, setScripts] = useState<MatterScript[]>([])
-  const [viewingId, setViewingId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [codeDrafts, setCodeDrafts] = useState<Record<string, string>>({})
   const [prompt, setPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT)
   const [rightSidebarWidth, setRightSidebarWidth] = useState(SIDEBAR_DEFAULT)
+  const [sidebarsHidden, setSidebarsHidden] = useState(false)
   const [resizingLeft, setResizingLeft] = useState(false)
   const [resizingRight, setResizingRight] = useState(false)
   const [gravityEnabled, setGravityEnabled] = useState(true)
@@ -60,6 +60,7 @@ function App() {
     }
     scriptsRef.current = []
     setScripts([])
+    setSelectedId(null)
     setCodeDrafts({})
   }, [])
 
@@ -171,7 +172,6 @@ function App() {
       scriptsRef.current = next
       setScripts(next)
       setSelectedId((current) => (current === id ? script.id : current))
-      setViewingId((current) => (current === id ? script.id : current))
       setError(null)
       return true
     } catch (err) {
@@ -186,7 +186,6 @@ function App() {
     script.remove()
     scriptsRef.current = scriptsRef.current.filter((s) => s.id !== id)
     setScripts(scriptsRef.current)
-    setViewingId((current) => (current === id ? null : current))
     setSelectedId((current) => (current === id ? null : current))
     setCodeDrafts((prev) => {
       if (!(id in prev)) return prev
@@ -196,7 +195,7 @@ function App() {
     })
   }
 
-  const reloadScript = (id: string) => {
+  const runObjectCode = (id: string) => {
     const script = scriptsRef.current.find((s) => s.id === id)
     if (!script) return
     const source = codeDrafts[id] ?? script.code
@@ -215,16 +214,62 @@ function App() {
     }
   }
 
+  const selectObjectRevision = (id: string, revisionIndex: number) => {
+    const script = scriptsRef.current.find((s) => s.id === id)
+    const revision = script?.history[revisionIndex]
+    if (!script || !revision) return
+
+    const ok = replaceGeneratedCode(
+      id,
+      revision.code,
+      script.title,
+      script.history,
+    )
+    if (ok) {
+      setCodeDrafts((prev) => {
+        if (!(id in prev)) return prev
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+    }
+  }
+
   const clearAll = () => {
     for (const script of scriptsRef.current) {
       script.remove()
     }
     scriptsRef.current = []
     setScripts([])
-    setViewingId(null)
     setSelectedId(null)
     setCodeDrafts({})
     setError(null)
+  }
+
+  const addEmptyObject = () => {
+    const scope = scopeRef.current
+    if (!scope) {
+      setError('Engine is not ready yet')
+      return
+    }
+
+    try {
+      const title = 'Empty'
+      const source = ''
+      const script = createMatterScript(
+        source,
+        scope,
+        trackingRef.current,
+        title,
+        [{ request: title, code: source }],
+      )
+      scriptsRef.current = [...scriptsRef.current, script]
+      setScripts(scriptsRef.current)
+      setSelectedId(script.id)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   const handleCodeChange = (id: string, code: string) => {
@@ -233,10 +278,6 @@ function App() {
 
   const toggleSelection = (id: string) => {
     setSelectedId((current) => (current === id ? null : id))
-  }
-
-  const toggleView = (id: string) => {
-    setViewingId((current) => (current === id ? null : id))
   }
 
   const askForCode = async () => {
@@ -289,27 +330,52 @@ function App() {
     }
   }
 
+  const selectedScript =
+    scripts.find((script) => script.id === selectedId) ?? null
+  const objectCode = selectedScript
+    ? (codeDrafts[selectedScript.id] ?? selectedScript.code)
+    : ''
+  const objectCodeDirty =
+    selectedScript !== null && objectCode !== selectedScript.code
+
+  const toggleSidebars = () => {
+    setResizingLeft(false)
+    setResizingRight(false)
+    setSidebarsHidden((hidden) => !hidden)
+  }
+
   return (
     <div className={`app${resizing ? ' app--resizing' : ''}`}>
-      <LeftSidebar
-        width={sidebarWidth}
-        scripts={scripts}
-        viewingId={viewingId}
-        selectedId={selectedId}
-        error={error}
-        prompt={prompt}
-        generating={generating}
-        onClearAll={clearAll}
-        onToggleSelection={toggleSelection}
-        onToggleView={toggleView}
-        onReloadScript={reloadScript}
-        onRemoveScript={removeScript}
-        onCodeChange={handleCodeChange}
-        codeDrafts={codeDrafts}
-        onPromptChange={setPrompt}
-        onSubmit={() => void askForCode()}
-        onResizeStart={() => setResizingLeft(true)}
-      />
+      {sidebarsHidden ? (
+        <button
+          type="button"
+          className="sidebar-toggle sidebar-toggle--collapsed"
+          aria-label="Show sidebars"
+          title="Show sidebars"
+          onClick={toggleSidebars}
+        >
+          »
+        </button>
+      ) : (
+        <LeftSidebar
+          width={sidebarWidth}
+          scripts={scripts}
+          selectedId={selectedId}
+          error={error}
+          prompt={prompt}
+          generating={generating}
+          onClearAll={clearAll}
+          onAddEmpty={addEmptyObject}
+          onClearSelection={() => setSelectedId(null)}
+          onToggleSelection={toggleSelection}
+          onRunScript={runObjectCode}
+          onRemoveScript={removeScript}
+          onPromptChange={setPrompt}
+          onSubmit={() => void askForCode()}
+          onToggleSidebars={toggleSidebars}
+          onResizeStart={() => setResizingLeft(true)}
+        />
+      )}
 
       <MatterCanvas
         wallsEnabled={wallsEnabled}
@@ -319,30 +385,44 @@ function App() {
         gravityY={gravityY}
         gravityScale={gravityScale}
         debugView={debugView}
-        selectedId={selectedId}
+        selectedId={sidebarsHidden ? null : selectedId}
         scripts={scripts}
         onScopeChange={handleScopeChange}
         onScriptsCleanup={handleScriptsCleanup}
       />
 
-      <RightSidebar
-        width={rightSidebarWidth}
-        gravityEnabled={gravityEnabled}
-        gravityX={gravityX}
-        gravityY={gravityY}
-        gravityScale={gravityScale}
-        wallsEnabled={wallsEnabled}
-        wallSides={wallSides}
-        debugView={debugView}
-        onGravityEnabledChange={setGravityEnabled}
-        onGravityXChange={setGravityX}
-        onGravityYChange={setGravityY}
-        onGravityScaleChange={setGravityScale}
-        onWallsEnabledChange={setWallsEnabled}
-        onWallSidesChange={setWallSides}
-        onDebugViewChange={setDebugView}
-        onResizeStart={() => setResizingRight(true)}
-      />
+      {!sidebarsHidden ? (
+        <RightSidebar
+          width={rightSidebarWidth}
+          selectedScript={selectedScript}
+          objectCode={objectCode}
+          objectCodeDirty={objectCodeDirty}
+          gravityEnabled={gravityEnabled}
+          gravityX={gravityX}
+          gravityY={gravityY}
+          gravityScale={gravityScale}
+          wallsEnabled={wallsEnabled}
+          wallSides={wallSides}
+          debugView={debugView}
+          onGravityEnabledChange={setGravityEnabled}
+          onGravityXChange={setGravityX}
+          onGravityYChange={setGravityY}
+          onGravityScaleChange={setGravityScale}
+          onWallsEnabledChange={setWallsEnabled}
+          onWallSidesChange={setWallSides}
+          onDebugViewChange={setDebugView}
+          onObjectCodeChange={(code) => {
+            if (selectedScript) handleCodeChange(selectedScript.id, code)
+          }}
+          onRunObjectCode={() => {
+            if (selectedScript) runObjectCode(selectedScript.id)
+          }}
+          onSelectObjectRevision={(index) => {
+            if (selectedScript) selectObjectRevision(selectedScript.id, index)
+          }}
+          onResizeStart={() => setResizingRight(true)}
+        />
+      ) : null}
     </div>
   )
 }

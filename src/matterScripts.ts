@@ -13,11 +13,17 @@ export type MatterScope = {
   Engine: typeof Matter.Engine
   Bodies: typeof Matter.Bodies
   Body: typeof Matter.Body
+  Common: typeof Matter.Common
   Composite: typeof Matter.Composite
+  Composites: typeof Matter.Composites
   Constraint: typeof Matter.Constraint
+  Mouse: typeof Matter.Mouse
+  MouseConstraint: typeof Matter.MouseConstraint
+  Render: typeof Matter.Render
   Vector: typeof Matter.Vector
   engine: Matter.Engine
   world: Matter.World
+  render: Matter.Render
   width: number
   height: number
   walls: WallConfig
@@ -195,11 +201,17 @@ export function createMatterScript(
           Engine,
           Bodies,
           Body,
+          Common,
           Composite,
+          Composites,
           Constraint,
+          Mouse,
+          MouseConstraint,
+          Render,
           Vector,
           engine,
           world,
+          render,
           width,
           height,
           walls,

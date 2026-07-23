@@ -14,6 +14,7 @@ body,
 }
 
 .app {
+  position: relative;
   display: flex;
   flex-direction: row;
   width: 100%;
@@ -30,7 +31,10 @@ body,
 }
 
 .sidebar {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 6;
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
@@ -58,6 +62,9 @@ body,
 }
 
 .sidebar--right {
+  right: 0;
+  left: auto;
+  z-index: 5;
   border-right: none;
   border-left: 1px solid #2a2f3a;
 }
@@ -167,6 +174,82 @@ body,
   overflow: auto;
 }
 
+.sidebar__main--object {
+  padding: 0;
+  overflow: hidden;
+}
+
+.object-editor {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.object-editor__toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: end;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid #2a2f3a;
+}
+
+.object-editor__history {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.object-editor__label {
+  font: 600 10px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9aa3b2;
+}
+
+.object-editor__select {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #3d4656;
+  background: #0a0c10;
+  color: #d7dde8;
+  font: 11px/1 ui-sans-serif, system-ui, sans-serif;
+  outline: none;
+}
+
+.object-editor__select:focus {
+  border-color: #4da6ff;
+}
+
+.object-editor__run {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #3d4656;
+  background: #1a1f29;
+  color: #e8eaed;
+  font: 500 11px/1 ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.object-editor__run:hover:not(:disabled) {
+  background: #242b38;
+}
+
+.object-editor__run:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.object-editor__monaco {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .sidebar__section {
   display: flex;
   flex-direction: column;
@@ -188,6 +271,73 @@ body,
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.sidebar__header-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.sidebar-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #3d4656;
+  border-radius: 4px;
+  background: transparent;
+  color: #c2c8d4;
+  font: 14px/1 ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.sidebar-toggle:hover {
+  border-color: #5a6578;
+  background: #1a1f29;
+  color: #e8eaed;
+}
+
+.sidebar-toggle--collapsed {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  width: 28px;
+  height: 28px;
+  background: #12151b;
+}
+
+.sidebar__header-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar__add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #3d4656;
+  border-radius: 4px;
+  background: transparent;
+  color: #c2c8d4;
+  font: 500 16px/1 ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.sidebar__add:hover {
+  border-color: #5a6578;
+  background: #1a1f29;
+  color: #e8eaed;
 }
 
 .sidebar__clear {
@@ -225,6 +375,7 @@ body,
 .matter-scene {
   position: relative;
   flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
   min-height: 0;
   height: 100%;
@@ -242,7 +393,7 @@ body,
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   overflow: auto;
 }
 
@@ -250,15 +401,12 @@ body,
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 8px;
+  padding: 10px 8px;
   border: 1px solid transparent;
   border-radius: 6px;
   border-bottom: 1px solid #1e2430;
 }
 
-.script-list__item:last-child {
-  border-bottom: none;
-}
 
 .script-list__item--selected {
   border-color: #4da6ff;
@@ -323,29 +471,6 @@ body,
 .script-list__action--danger:hover {
   border-color: #f07178;
   color: #f07178;
-}
-
-.script-list__code {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  margin: 0;
-  min-height: 140px;
-  max-height: 220px;
-  overflow: auto;
-  padding: 10px;
-  border: 1px solid #2a2f3a;
-  background: #0a0c10;
-  color: #d7dde8;
-  font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  white-space: pre;
-  word-break: normal;
-  resize: vertical;
-  outline: none;
-}
-
-.script-list__code:focus {
-  border-color: #3d4654;
 }
 
 .prompt-bar {

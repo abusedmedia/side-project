@@ -1,13 +1,17 @@
-import { useState } from 'react'
-import type { WallConfig } from '../matterScripts'
+import Editor from '@monaco-editor/react'
+import { useEffect, useState } from 'react'
+import type { MatterScript, WallConfig } from '../matterScripts'
 import { SIDEBAR_MAX, SIDEBAR_MIN } from '../constants/layout'
 
-type RightTab = 'global'
+type RightTab = 'global' | 'object'
 
 type WallSides = Pick<WallConfig, 'bottom' | 'top' | 'left' | 'right'>
 
 type RightSidebarProps = {
   width: number
+  selectedScript: MatterScript | null
+  objectCode: string
+  objectCodeDirty: boolean
   gravityEnabled: boolean
   gravityX: number
   gravityY: number
@@ -22,11 +26,17 @@ type RightSidebarProps = {
   onWallsEnabledChange: (enabled: boolean) => void
   onWallSidesChange: (sides: WallSides) => void
   onDebugViewChange: (enabled: boolean) => void
+  onObjectCodeChange: (code: string) => void
+  onRunObjectCode: () => void
+  onSelectObjectRevision: (index: number) => void
   onResizeStart: () => void
 }
 
 export function RightSidebar({
   width,
+  selectedScript,
+  objectCode,
+  objectCodeDirty,
   gravityEnabled,
   gravityX,
   gravityY,
@@ -41,9 +51,24 @@ export function RightSidebar({
   onWallsEnabledChange,
   onWallSidesChange,
   onDebugViewChange,
+  onObjectCodeChange,
+  onRunObjectCode,
+  onSelectObjectRevision,
   onResizeStart,
 }: RightSidebarProps) {
   const [rightTab, setRightTab] = useState<RightTab>('global')
+
+  useEffect(() => {
+    if (!selectedScript && rightTab === 'object') {
+      setRightTab('global')
+    }
+  }, [rightTab, selectedScript])
+
+  const activeRevision = selectedScript
+    ? selectedScript.history.findLastIndex(
+        (revision) => revision.code === selectedScript.code,
+      )
+    : -1
 
   return (
     <aside
@@ -60,9 +85,22 @@ export function RightSidebar({
         >
           Global
         </button>
+        {selectedScript ? (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={rightTab === 'object'}
+            className={`tabbar__tab${rightTab === 'object' ? ' tabbar__tab--active' : ''}`}
+            onClick={() => setRightTab('object')}
+          >
+            Object
+          </button>
+        ) : null}
       </div>
 
-      <div className="sidebar__main">
+      <div
+        className={`sidebar__main${rightTab === 'object' ? ' sidebar__main--object' : ''}`}
+      >
         {rightTab === 'global' ? (
           <div className="settings">
             <section className="settings__group">
@@ -203,6 +241,57 @@ export function RightSidebar({
                 />
               </label>
             </section>
+          </div>
+        ) : selectedScript ? (
+          <div className="object-editor">
+            <div className="object-editor__toolbar">
+              <label className="object-editor__history">
+                <span className="object-editor__label">History</span>
+                <select
+                  className="object-editor__select"
+                  value={objectCodeDirty ? '' : activeRevision}
+                  onChange={(event) =>
+                    onSelectObjectRevision(Number(event.target.value))
+                  }
+                >
+                  {objectCodeDirty ? (
+                    <option value="" disabled>
+                      Unsaved edit
+                    </option>
+                  ) : null}
+                  {selectedScript.history.map((revision, index) => (
+                    <option key={index} value={index}>
+                      {index + 1}. {revision.request}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="object-editor__run"
+                disabled={!objectCodeDirty}
+                onClick={onRunObjectCode}
+              >
+                Run
+              </button>
+            </div>
+            <div className="object-editor__monaco">
+              <Editor
+                language="javascript"
+                theme="vs-dark"
+                value={objectCode}
+                onChange={(value) => onObjectCodeChange(value ?? '')}
+                options={{
+                  automaticLayout: true,
+                  fontSize: 12,
+                  minimap: { enabled: false },
+                  padding: { top: 10 },
+                  scrollBeyondLastLine: false,
+                  tabSize: 2,
+                  wordWrap: 'on',
+                }}
+              />
+            </div>
           </div>
         ) : null}
       </div>

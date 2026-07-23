@@ -132,8 +132,20 @@ export function MatterCanvas({
     const container = sceneRef.current
     if (!container) return
 
-    const { Engine, Render, Runner, Bodies, Body, Composite, Constraint, Vector, Mouse, MouseConstraint } =
-      Matter
+    const {
+      Engine,
+      Render,
+      Runner,
+      Bodies,
+      Body,
+      Common,
+      Composite,
+      Composites,
+      Constraint,
+      Vector,
+      Mouse,
+      MouseConstraint,
+    } = Matter
 
     const engine = Engine.create()
     engineRef.current = engine
@@ -198,6 +210,11 @@ export function MatterCanvas({
       if (bodies.length === 0) return
 
       const context = render.context
+      // Matter ends the lookAt/bounds view transform before afterRender;
+      // re-apply it so world-space vertices align with on-screen bodies.
+      const hasBounds = Boolean(render.options.hasBounds)
+      if (hasBounds) Render.startViewTransform(render)
+
       context.beginPath()
       for (const body of bodies) {
         const vertices = body.vertices
@@ -210,6 +227,8 @@ export function MatterCanvas({
       context.lineWidth = 3
       context.strokeStyle = '#4da6ff'
       context.stroke()
+
+      if (hasBounds) Render.endViewTransform(render)
     }
 
     Matter.Events.on(render, 'afterRender', onAfterRender)
@@ -220,11 +239,17 @@ export function MatterCanvas({
         Engine,
         Bodies,
         Body,
+        Common,
         Composite,
+        Composites,
         Constraint,
+        Mouse,
+        MouseConstraint,
+        Render,
         Vector,
         engine,
         world: engine.world,
+        render,
         width: w,
         height: h,
         walls: { ...wallConfigRef.current },
@@ -244,10 +269,7 @@ export function MatterCanvas({
       const scaleX = w / width
       const scaleY = h / height
 
-      render.canvas.width = w
-      render.canvas.height = h
-      render.options.width = w
-      render.options.height = h
+      Render.setSize(render, w, h)
 
       Body.setPosition(ground, { x: w / 2, y: h + 25 })
       Body.scale(ground, scaleX, 1)

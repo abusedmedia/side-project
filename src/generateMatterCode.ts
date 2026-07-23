@@ -8,17 +8,19 @@ Your code is injected into this wrapper and executed once when the user clicks A
 \`\`\`js
 function setup(props) {
   const {
-    Matter, Engine, Bodies, Body, Composite, Constraint, Vector,
-    engine, world, width, height, walls, script,
+    Matter, Engine, Bodies, Body, Common, Composite, Composites, Constraint,
+    Mouse, MouseConstraint, Render, Vector,
+    engine, world, render, width, height, walls, script,
   } = props;
   // YOUR CODE HERE
 }
 \`\`\`
 
 ## Available bindings
-- Matter, Engine, Bodies, Body, Composite, Constraint, Vector
+- Matter, Engine, Bodies, Body, Common, Composite, Composites, Constraint, Mouse, MouseConstraint, Render, Vector
 - engine — running Matter.Engine
 - world — engine.world
+- render — running Matter.Render instance (canvas, context, options)
 - width, height — current canvas size in pixels
 - walls — { enabled, bottom, top, left, right } booleans for which static boundaries exist
 - script — { id, code, remove() } for this snippet (prefer not calling remove unless asked)
